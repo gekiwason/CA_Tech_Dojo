@@ -40,20 +40,22 @@ func main() {
     r := gin.Default()
     r.POST("/user/create", create)
     r.OPTIONS("/user/create", Options)
+    r.GET("/user/get", get)
+    r.PUT("/user/update", put)
     r.Run(":8000")
 }
 
 func Options(c *gin.Context) {
-	if c.Request.Method != "OPTIONS" {
-		c.Next()
-	} else {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "authorization, origin, content-type, accept")
-		c.Header("Allow", "HEAD,GET,POST,PUT,PATCH,DELETE,OPTIONS")
-		c.Header("Content-Type", "application/json")
-		c.AbortWithStatus(http.StatusOK)
-	}
+    if c.Request.Method != "OPTIONS" {
+        c.Next()
+    } else {
+        c.Header("Access-Control-Allow-Origin", "*")
+        c.Header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
+        c.Header("Access-Control-Allow-Headers", "authorization, origin, content-type, accept")
+        c.Header("Allow", "HEAD,GET,POST,PUT,PATCH,DELETE,OPTIONS")
+        c.Header("Content-Type", "application/json")
+        c.AbortWithStatus(http.StatusOK)
+    }
 }
 
 func create(c *gin.Context) {
@@ -80,4 +82,32 @@ func create(c *gin.Context) {
             "token": user.Token,
         })
     }
+}
+
+func get(c *gin.Context) {
+    db := gormConnect()
+    db.LogMode(true)
+
+    user := User{}
+    token := c.Request.Header.Get("x-token")
+
+    db.Where("token = ?", token).First(&user)
+    c.JSON(http.StatusOK, gin.H{
+        "name": user.Name,
+    })
+}
+
+func put(c *gin.Context) {
+    db := gormConnect()
+    db.LogMode(true)
+
+    user := User{}
+    token := c.Request.Header.Get("x-token")
+
+    data := User{}
+    if err := c.BindJSON(&data); err != nil {
+      c.String(http.StatusBadRequest, "Request is failed: "+err.Error())
+    }
+
+    db.Where("token = ?", token).First(&user).Updates(&data)
 }
