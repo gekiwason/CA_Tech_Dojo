@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/md5"
 	"fmt"
-	"io"
 	"log"
 	"math/rand"
 	"net/http"
@@ -64,6 +63,12 @@ type CharacterListResponse struct {
 }
 
 func main() {
+	db := gormConnect()
+	db.Set("gorm:table_options", "ENGINE=InnoDB")
+	db.AutoMigrate(&User{})
+	db.AutoMigrate(&Character{})
+	db.AutoMigrate(&UserCharacter{})
+
 	r := gin.Default()
 	r.POST("/user/create", create)
 	r.GET("/user/get", get)
@@ -75,7 +80,6 @@ func main() {
 
 func list(c *gin.Context) {
 	db := gormConnect()
-	db.LogMode(true)
 	user := User{}
 	userCharacters := []UserCharacter{}
 
@@ -114,10 +118,6 @@ func list(c *gin.Context) {
 
 func gacha(c *gin.Context) {
 	db := gormConnect()
-	db.LogMode(true)
-	db.Set("gorm:table_options", "ENGINE=InnoDB")
-	db.AutoMigrate(&Character{})
-	db.AutoMigrate(&UserCharacter{})
 
 	user := User{}
 	token := c.Request.Header.Get("x-token")
@@ -179,33 +179,29 @@ func gacha(c *gin.Context) {
 
 func create(c *gin.Context) {
 	db := gormConnect()
-	db.LogMode(true)
-	db.Set("gorm:table_options", "ENGINE=InnoDB")
-	db.AutoMigrate(&User{})
 
 	user := User{}
 	c.BindJSON(&user)
 
-	token := "q3489fj9q0348nfq034mf"
-	token = user.Name + token
-	h := md5.New()
-	io.WriteString(h, token)
-	s := fmt.Sprintf("%x", h.Sum(nil))
+	salt := time.Now().Unix ()
+	m5 := md5.New()
+	m5.Write([]byte(user.Name))
+	m5.Write([]byte(fmt.Sprint(salt)))
+	s := fmt.Sprintf("%x", m5.Sum(nil))
 
 	user.Token = s
 
-	db.NewRecord(user)
-	db.Create(&user)
-	if db.NewRecord(user) == false {
-		c.JSON(http.StatusOK, gin.H{
-			"token": user.Token,
-		})
+	if err := db.Create(&user).Error; err != nil {
+		c.String(http.StatusBadRequest, "Request is failed: "+err.Error())
+		return
 	}
+	c.JSON(http.StatusOK, gin.H{
+		"token": user.Token,
+	})
 }
 
 func get(c *gin.Context) {
 	db := gormConnect()
-	db.LogMode(true)
 
 	user := User{}
 	token := c.Request.Header.Get("x-token")
@@ -218,7 +214,6 @@ func get(c *gin.Context) {
 
 func put(c *gin.Context) {
 	db := gormConnect()
-	db.LogMode(true)
 
 	user := User{}
 	token := c.Request.Header.Get("x-token")
