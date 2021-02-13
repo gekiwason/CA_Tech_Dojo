@@ -57,6 +57,12 @@ type GachaResult struct {
 	Name        string `json:"name"`
 }
 
+type CharacterListResponse struct {
+	UserCharacterID string `json:"userCharacterID"`
+	CharacterID     string `json:"characterID"`
+	Name            string `json:"name"`
+}
+
 func main() {
 	r := gin.Default()
 	r.POST("/user/create", create)
@@ -84,19 +90,26 @@ func list(c *gin.Context) {
 		return
 	}
 
-	characters := []Character{}
+	res := []CharacterListResponse{}
 	for _, v := range userCharacters {
 		character := Character{}
+		characterForRes := CharacterListResponse{}
 		log.Println(v.CharacterID)
 		if err := db.First(&character, "id = ?", v.CharacterID).Error; err != nil {
 			c.String(http.StatusBadRequest, "Request is failed: "+err.Error())
 			return
 		}
 
-		characters = append(characters, character)
+		characterForRes.UserCharacterID = fmt.Sprint(v.ID)
+		characterForRes.CharacterID = fmt.Sprint(character.ID)
+		characterForRes.Name = character.Name
+
+		res = append(res, characterForRes)
 	}
 
-	c.JSON(http.StatusOK, characters)
+	c.JSON(http.StatusOK, gin.H{
+		"characters": res,
+	})
 }
 
 func gacha(c *gin.Context) {
