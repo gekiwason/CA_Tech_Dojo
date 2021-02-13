@@ -206,7 +206,10 @@ func get(c *gin.Context) {
 	user := User{}
 	token := c.Request.Header.Get("x-token")
 
-	db.Where("token = ?", token).First(&user)
+	if err := db.Where("token = ?", token).First(&user).Error; err != nil {
+		c.String(http.StatusBadRequest, "Request is failed: "+err.Error())
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"name": user.Name,
 	})
