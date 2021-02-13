@@ -68,7 +68,6 @@ func list(c *gin.Context) {
 	db.LogMode(true)
 	user := User{}
 	userCharacters := []UserCharacter{}
-	// characters := []Character{}
 
 	token := c.Request.Header.Get("x-token")
 	if err := db.Where("token = ?", token).First(&user).Error; err != nil {
@@ -81,14 +80,19 @@ func list(c *gin.Context) {
 		return
 	}
 
-	// for k, v := range userCharacters {
-	//     if err := db.Where("id = ?", userCharacters.CharacterID).Find(&characters).Error; err != nil {
-	//         c.String(http.StatusBadRequest, "Request is failed: "+err.Error())
-	//         return
-	//     }
-	// }
+    characters := []Character{}
+	for _, v := range userCharacters {
+        character := Character{}
+        log.Println(v.CharacterID)
+	    if err := db.First(&character, "id = ?", v.CharacterID).Error; err != nil {
+	        c.String(http.StatusBadRequest, "Request is failed: "+err.Error())
+	        return
+	    }
 
-	log.Printf("%v %#v %T\n", userCharacters, userCharacters, userCharacters)
+        characters = append(characters, character)
+	}
+
+    c.JSON(http.StatusOK, characters)
 }
 
 func gacha(c *gin.Context) {
