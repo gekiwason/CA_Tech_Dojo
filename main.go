@@ -229,4 +229,5 @@ func put(c *gin.Context) {
 	}
 
 	db.Where("token = ?", token).First(&user).Updates(&data)
+	c.Status(http.StatusOK)
 }
