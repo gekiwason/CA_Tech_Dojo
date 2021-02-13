@@ -2,10 +2,12 @@ package main
  
 import (
     "fmt"
-    "log"
+    // "log"
     "net/http"
     "crypto/md5"
     "io"
+    "math/rand"
+    "time"
 
     "github.com/gin-gonic/gin" 
     "github.com/jinzhu/gorm"
@@ -34,15 +36,60 @@ type User struct {
     Token  string `json:token`
 }
 
-func main() {
-    log.Println("Server started on: http://localhost:8000")
+type Character struct {
+    ID       uint       `gorm:"primaryKey"`
+    Name  string
+    Rarity  uint8
+}
 
+type GachaDrawRequest struct {
+    Times   int
+}
+
+func main() {
     r := gin.Default()
     r.POST("/user/create", create)
     r.OPTIONS("/user/create", Options)
     r.GET("/user/get", get)
     r.PUT("/user/update", put)
+    r.POST("/gacha/draw", gacha)
     r.Run(":8000")
+}
+
+func gacha(c *gin.Context) {
+    db := gormConnect()
+    db.LogMode(true)
+    db.Set("gorm:table_options", "ENGINE=InnoDB")
+    db.AutoMigrate(&Character{})
+
+    raritys := map[int]int{
+        3: 300,
+        2: 1200,
+        1: 8500,
+    }
+
+    req := GachaDrawRequest{}
+    c.BindJSON(&req)
+    times := req.Times
+
+    result := []Character{}
+    characters := []Character{}
+    for i := 1; i <= times; i++ {
+        rand.Seed(time.Now().UnixNano())
+        random := (rand.Intn(10000))
+        probability := 0
+        for rarity, rarity_probability := range raritys {
+            probability += rarity_probability
+            if random <= probability { // 排出レアリティ確定
+                db.Where("rarity = ?", rarity).Find(&characters) // 排出レアリティ内からランダムに1枚取得
+                num := rand.Intn(len(characters))
+                result = append(result, characters[num])
+                break
+            }
+        }
+        time.Sleep(1 * time.Second) // seed値が近すぎるとガチャ排出
+    }
+    c.JSON(http.StatusOK, result)
 }
 
 func Options(c *gin.Context) {
