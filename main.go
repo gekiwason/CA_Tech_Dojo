@@ -52,6 +52,11 @@ type GachaDrawRequest struct {
 	Times int
 }
 
+type GachaResult struct {
+	CharacterID string `json:"characterID"`
+	Name        string `json:"name"`
+}
+
 func main() {
 	r := gin.Default()
 	r.POST("/user/create", create)
@@ -120,6 +125,8 @@ func gacha(c *gin.Context) {
 
 	result := Character{}
 	characters := []Character{}
+	results := []GachaResult{}
+
 	for i := 1; i <= times; i++ {
 
 		userCharacter := UserCharacter{}
@@ -129,6 +136,7 @@ func gacha(c *gin.Context) {
 		random := (rand.Intn(10000))
 		probability := 0
 
+		gachaResult := GachaResult{}
 		for rarity, rarity_probability := range raritys {
 			probability += rarity_probability
 			if random <= probability { // 排出レアリティ確定
@@ -139,6 +147,11 @@ func gacha(c *gin.Context) {
 				userCharacter.CharacterID = result.ID
 				db.Create(&userCharacter)
 
+				gachaResult.CharacterID = fmt.Sprint(result.ID)
+				gachaResult.Name = result.Name
+				results = append(results, gachaResult)
+
+				log.Printf("%v", results)
 				break
 			}
 		}
@@ -146,7 +159,9 @@ func gacha(c *gin.Context) {
 		time.Sleep(1 * time.Second) // seed値をずらしガチャ排出を均一に
 	}
 
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, gin.H{
+		"results": results,
+	})
 }
 
 func create(c *gin.Context) {
