@@ -42,6 +42,12 @@ type Character struct {
     Rarity  uint8
 }
 
+type UserCharacter struct {
+    ID                   uint   `gorm:"primaryKey"`
+    UserID            uint
+    CharacterID     uint
+}
+
 type GachaDrawRequest struct {
     Times   int
 }
@@ -61,6 +67,11 @@ func gacha(c *gin.Context) {
     db.LogMode(true)
     db.Set("gorm:table_options", "ENGINE=InnoDB")
     db.AutoMigrate(&Character{})
+    db.AutoMigrate(&UserCharacter{})
+
+    user := User{}
+    token := c.Request.Header.Get("x-token")
+    db.Where("token = ?", token).First(&user)
 
     raritys := map[int]int{
         3: 300,
@@ -72,23 +83,34 @@ func gacha(c *gin.Context) {
     c.BindJSON(&req)
     times := req.Times
 
-    result := []Character{}
+    result := Character{}
     characters := []Character{}
     for i := 1; i <= times; i++ {
+
+        userCharacter := UserCharacter{}
+        userCharacter.UserID = user.ID
+
         rand.Seed(time.Now().UnixNano())
         random := (rand.Intn(10000))
         probability := 0
+
         for rarity, rarity_probability := range raritys {
             probability += rarity_probability
             if random <= probability { // 排出レアリティ確定
                 db.Where("rarity = ?", rarity).Find(&characters) // 排出レアリティ内からランダムに1枚取得
                 num := rand.Intn(len(characters))
-                result = append(result, characters[num])
+                result = characters[num]
+
+                userCharacter.CharacterID = result.ID
+                db.Create(&userCharacter)
+
                 break
             }
         }
+
         time.Sleep(1 * time.Second) // seed値が近すぎるとガチャ排出
     }
+
     c.JSON(http.StatusOK, result)
 }
 
