@@ -55,7 +55,6 @@ type GachaDrawRequest struct {
 func main() {
 	r := gin.Default()
 	r.POST("/user/create", create)
-	r.OPTIONS("/user/create", Options)
 	r.GET("/user/get", get)
 	r.PUT("/user/update", put)
 	r.POST("/gacha/draw", gacha)
@@ -80,19 +79,19 @@ func list(c *gin.Context) {
 		return
 	}
 
-    characters := []Character{}
+	characters := []Character{}
 	for _, v := range userCharacters {
-        character := Character{}
-        log.Println(v.CharacterID)
-	    if err := db.First(&character, "id = ?", v.CharacterID).Error; err != nil {
-	        c.String(http.StatusBadRequest, "Request is failed: "+err.Error())
-	        return
-	    }
+		character := Character{}
+		log.Println(v.CharacterID)
+		if err := db.First(&character, "id = ?", v.CharacterID).Error; err != nil {
+			c.String(http.StatusBadRequest, "Request is failed: "+err.Error())
+			return
+		}
 
-        characters = append(characters, character)
+		characters = append(characters, character)
 	}
 
-    c.JSON(http.StatusOK, characters)
+	c.JSON(http.StatusOK, characters)
 }
 
 func gacha(c *gin.Context) {
@@ -148,19 +147,6 @@ func gacha(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result)
-}
-
-func Options(c *gin.Context) {
-	if c.Request.Method != "OPTIONS" {
-		c.Next()
-	} else {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "authorization, origin, content-type, accept")
-		c.Header("Allow", "HEAD,GET,POST,PUT,PATCH,DELETE,OPTIONS")
-		c.Header("Content-Type", "application/json")
-		c.AbortWithStatus(http.StatusOK)
-	}
 }
 
 func create(c *gin.Context) {
