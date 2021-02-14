@@ -12,21 +12,6 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 )
 
-func gormConnect() *gorm.DB {
-	DBMS := "mysql"
-	USER := "root"
-	PASS := "root"
-	PROTOCOL := "tcp(localhost:3306)"
-	DBNAME := "CA_Tech_Dojo"
-	CONNECT := USER + ":" + PASS + "@" + PROTOCOL + "/" + DBNAME
-	db, err := gorm.Open(DBMS, CONNECT)
-
-	if err != nil {
-		panic(err.Error())
-	}
-	return db
-}
-
 type User struct {
 	ID    uint   `gorm:"primaryKey"`
 	Name  string `json:name gorm:"unique"`
@@ -85,6 +70,37 @@ type CharacterSellResponse struct {
 	UserCoin string `json:"userCoin"`
 }
 
+func gormConnect() *gorm.DB {
+	DBMS := "mysql"
+	USER := "root"
+	PASS := "root"
+	PROTOCOL := "tcp(localhost:3306)"
+	DBNAME := "CA_Tech_Dojo"
+	CONNECT := USER + ":" + PASS + "@" + PROTOCOL + "/" + DBNAME
+	db, err := gorm.Open(DBMS, CONNECT)
+
+	if err != nil {
+		panic(err.Error())
+	}
+	return db
+}
+
+func CORSMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	}
+}
+
 func main() {
 	db := gormConnect()
 	db.Set("gorm:table_options", "ENGINE=InnoDB")
@@ -93,6 +109,10 @@ func main() {
 	db.AutoMigrate(&UserCharacter{})
 
 	r := gin.Default()
+
+	// CORS 対応
+	r.Use(CORSMiddleware())
+
 	r.POST("/user/create", create)
 	r.GET("/user/get", get)
 	r.PUT("/user/update", put)
@@ -183,7 +203,7 @@ func put(c *gin.Context) {
 		return
 	}
 
-	c.Status(http.StatusOK)
+	c.String(http.StatusOK, "successed!")
 }
 
 func gacha(c *gin.Context) {
