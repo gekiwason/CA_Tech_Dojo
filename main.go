@@ -31,6 +31,7 @@ type User struct {
 	ID    uint   `gorm:"primaryKey"`
 	Name  string `json:name gorm:"unique"`
 	Token string `json:token`
+	Coin  uint   `json:coin`
 }
 
 type Character struct {
@@ -43,6 +44,14 @@ type UserCharacter struct {
 	ID          uint `gorm:"primaryKey"`
 	UserID      uint
 	CharacterID uint
+}
+
+type UserCreateRequest struct {
+	Name string `json:"name"`
+}
+
+type UserCreateResponse struct {
+	Token string `json:"token"`
 }
 
 type UserUpdateRequest struct {
@@ -83,16 +92,19 @@ func main() {
 func create(c *gin.Context) {
 	db := gormConnect()
 
+	req := UserCreateRequest{}
+	c.BindJSON(&req)
+
 	user := User{}
-	c.BindJSON(&user)
 
 	salt := time.Now().Unix()
 	m5 := md5.New()
 	m5.Write([]byte(user.Name))
 	m5.Write([]byte(fmt.Sprint(salt)))
-	s := fmt.Sprintf("%x", m5.Sum(nil))
+	token := fmt.Sprintf("%x", m5.Sum(nil))
 
-	user.Token = s
+	user.Name = req.Name
+	user.Token = token
 
 	if err := db.Create(&user).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -101,8 +113,11 @@ func create(c *gin.Context) {
 		return
 	}
 
+	res := UserCreateResponse{}
+	res.Token = user.Token
+
 	c.JSON(http.StatusOK, gin.H{
-		"token": user.Token,
+		"token": res,
 	})
 }
 
