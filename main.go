@@ -77,6 +77,14 @@ type CharacterListResponse struct {
 	Name            string `json:"name"`
 }
 
+type CharacterSellRequest struct {
+	UserCharacterID string `json:"userCharacterID"`
+}
+
+type CharacterSellResponse struct {
+	UserCoin string `json:"userCoin"`
+}
+
 func main() {
 	db := gormConnect()
 	db.Set("gorm:table_options", "ENGINE=InnoDB")
@@ -90,6 +98,7 @@ func main() {
 	r.PUT("/user/update", put)
 	r.POST("/gacha/draw", gacha)
 	r.GET("/character/list", list)
+	r.DELETE("/character/sell", sell)
 	r.Run(":8000")
 }
 
@@ -279,5 +288,66 @@ func list(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"characters": res,
+	})
+}
+
+func sell(c *gin.Context) {
+	db := gormConnect()
+
+	user := User{}
+	token := c.Request.Header.Get("x-token")
+	if err := db.Where("token = ?", token).First(&user).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	req := CharacterSellRequest{}
+	c.BindJSON(&req)
+	userCharacter := UserCharacter{}
+	if err := db.Where("id = ? AND user_id = ?", req.UserCharacterID, user.ID).First(&userCharacter).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	character := Character{}
+	if err := db.First(&character, "id = ?", userCharacter.CharacterID).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	switch character.Rarity {
+	case 3:
+		db.Delete(&userCharacter)
+		user.Coin += 10000
+	case 2:
+		db.Delete(&userCharacter)
+		user.Coin += 3000
+	case 1:
+		db.Delete(&userCharacter)
+		user.Coin += 500
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "unknown rarity",
+		})
+	}
+
+	if err := db.Save(&user).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	res := CharacterSellResponse{}
+	res.UserCoin = fmt.Sprint(user.Coin)
+
+	c.JSON(http.StatusOK, gin.H{
+		"userCoin": res.UserCoin,
 	})
 }
