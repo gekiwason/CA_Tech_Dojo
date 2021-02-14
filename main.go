@@ -54,6 +54,10 @@ type UserCreateResponse struct {
 	Token string `json:"token"`
 }
 
+type UserGetResponse struct {
+	Name string `json:"name"`
+}
+
 type UserUpdateRequest struct {
 	Name string `json:"name"`
 }
@@ -117,7 +121,7 @@ func create(c *gin.Context) {
 	res.Token = user.Token
 
 	c.JSON(http.StatusOK, gin.H{
-		"token": res,
+		"token": res.Token,
 	})
 }
 
@@ -133,8 +137,11 @@ func get(c *gin.Context) {
 		})
 		return
 	}
+
+	res := UserGetResponse{}
+	res.Name = user.Name
 	c.JSON(http.StatusOK, gin.H{
-		"name": user.Name,
+		"name": res.Name,
 	})
 }
 
