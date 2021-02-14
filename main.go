@@ -25,7 +25,6 @@ func gormConnect() *gorm.DB {
 	if err != nil {
 		panic(err.Error())
 	}
-	fmt.Println("db connected: ", &db)
 	return db
 }
 
@@ -196,9 +195,12 @@ func create(c *gin.Context) {
 	user.Token = s
 
 	if err := db.Create(&user).Error; err != nil {
-		c.String(http.StatusBadRequest, "Request is failed: "+err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"token": user.Token,
 	})
@@ -211,7 +213,9 @@ func get(c *gin.Context) {
 	token := c.Request.Header.Get("x-token")
 
 	if err := db.Where("token = ?", token).First(&user).Error; err != nil {
-		c.String(http.StatusBadRequest, "Request is failed: "+err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -227,18 +231,24 @@ func put(c *gin.Context) {
 	token := c.Request.Header.Get("x-token")
 
 	if err := c.BindJSON(&req); err != nil {
-		c.String(http.StatusBadRequest, "Request is failed: "+err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
 
 	if err := db.Where("token = ?", token).First(&user).Error; err != nil {
-		c.String(http.StatusBadRequest, "Request is failed: "+err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
 
 	user.Name = req.Name
 	if err := db.Save(&user).Error; err != nil {
-		c.String(http.StatusBadRequest, "Request is failed: "+err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
 
