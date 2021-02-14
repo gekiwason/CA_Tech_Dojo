@@ -47,6 +47,10 @@ type UserCharacter struct {
 	CharacterID uint
 }
 
+type UserUpdateRequest struct {
+	Name string `json:"name"`
+}
+
 type GachaDrawRequest struct {
 	Times int
 }
@@ -183,7 +187,7 @@ func create(c *gin.Context) {
 	user := User{}
 	c.BindJSON(&user)
 
-	salt := time.Now().Unix ()
+	salt := time.Now().Unix()
 	m5 := md5.New()
 	m5.Write([]byte(user.Name))
 	m5.Write([]byte(fmt.Sprint(salt)))
@@ -219,13 +223,24 @@ func put(c *gin.Context) {
 	db := gormConnect()
 
 	user := User{}
+	req := UserUpdateRequest{}
 	token := c.Request.Header.Get("x-token")
 
-	data := User{}
-	if err := c.BindJSON(&data); err != nil {
+	if err := c.BindJSON(&req); err != nil {
 		c.String(http.StatusBadRequest, "Request is failed: "+err.Error())
+		return
 	}
 
-	db.Where("token = ?", token).First(&user).Updates(&data)
+	if err := db.Where("token = ?", token).First(&user).Error; err != nil {
+		c.String(http.StatusBadRequest, "Request is failed: "+err.Error())
+		return
+	}
+
+	user.Name = req.Name
+	if err := db.Save(&user).Error; err != nil {
+		c.String(http.StatusBadRequest, "Request is failed: "+err.Error())
+		return
+	}
+
 	c.Status(http.StatusOK)
 }
